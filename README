@@ -1118,6 +1118,260 @@ What CANNOT be operands?
 
 
 -------------------------------------------------------------------------------
+Memory and pointers
+-------------------
+
+Flat Memory Model
+    -> https://en.wikipedia.org/wiki/Flat_memory_model
+
+    Modern x86-64 uses a **flat {virtual address space}**.
+    -> https://en.wikipedia.org/wiki/Virtual_address_space
+
+    Conceptually:
+
+        0x0000000000000000
+                ...
+                Code (.text)
+                Read-only data (.rodata)
+                Global data (.data)
+                Heap
+                ...
+                Stack
+        0xFFFFFFFFFFFFFFFF
+
+    A pointer is simply an **address** somewhere in this space.
+
+    Unlike the old 8086 segmented model (`segment:offset`), in x86-64 you
+    generally think:
+
+        physical address ≈ virtual address (after MMU translation)
+        pointer = 64-bit address
+
+    No manual segment arithmetic.
+
+
+Addresses vs Values
+
+        mov rbx, 5
+
+    puts the **number 5** into `rbx`, i.e., rbx = 0x5.
+
+    Whether you treat `5` as an integer or an address is entirely up to you.
+
+
+Dereferencing
+
+        mov cl, [rbx]
+
+    means: cl = memory[rbx].
+
+    Since rbx = 5, it means: cl = memory[0x5]
+
+    This will almost certainly crash in {user-space} because address `0x5` is
+    invalid.
+
+
+Why `byte ptr` exists
+
+        mov cl, [rbx]
+
+    is okay because destination (`cl`) already tells the assembler: size = 1 byte.
+
+    Equivalently:
+
+        mov cl, byte ptr [rbx]
+
+    But here:
+
+        mov [rbx], 11
+
+    the assembler doesn't know:
+
+        * store 1 byte?
+        * store 2 bytes?
+        * store 4 bytes?
+        * store 8 bytes?
+
+    So you must specify:
+
+        mov byte ptr [rbx], 11
+
+    meaning: memory[rbx] = 11 (1 byte)
+
+
+Pointer Sizes
+
+    *    byte ptr:  1 byte
+    *    word ptr:  2 bytes
+    *   dword ptr:  4 bytes
+    *   qword ptr:  8 bytes
+    * xmmword ptr: 16 bytes
+    * ymmword ptr: 32 bytes
+
+        mov       al,    byte ptr [rbx]
+        mov       ax,    word ptr [rbx]
+        mov      eax,   dword ptr [rbx]
+        mov      rax,   qword ptr [rbx]
+        movdqu  xmm0, xmmword ptr [rbx]
+        vmovdqu ymm0, ymmword ptr [rbx]
+
+
+Memory is untyped
+
+    Assembly sees memory like this:
+
+        Address     Bytes
+        1000        ??
+        1001        ??
+        1002        ??
+        1003        ??
+
+    The CPU does **not** know:
+
+        * int
+        * short
+        * float
+        * struct
+        * string
+
+    You decide how many bytes to read.
+
+
+LEA - Load Effective Address
+
+        lea rax, [rbx + 8]  ; rax = rbx + 8
+
+    No memory access occurs.
+
+    Equivalent to:
+
+        ```cpp
+        p = q + 8;
+        ```
+
+    NOT:
+
+        ```cpp
+        p = *q;
+        ```
+
+
+# What is an Effective Address?
+
+    My explanation (take it with a grain of pepper): Assembler/Compiler does
+    not know in priori where the exact location of the allocated memory, that
+    is the start of the data section, is. Only after the program is loaded by
+    the loader, that location in memory is known. Because of that we can only
+    talk about memory in data section via an offset. LEA instruciton comes to
+    light to get us the actuall, or effective, address in the virtual memory.
+
+
+Why RIP-relative addressing?
+
+
+    Programs are loaded at different addresses because of Address Space Layout
+    Randomization, ASLR.
+    https://en.wikipedia.org/wiki/Address_space_layout_randomization
+
+    Today: program base = 0x100000000
+
+    Tomorrow: program base = 0x104800000
+
+    The compiler cannot hardcode absolute addresses. Instead:
+
+        ```asm
+        lea rax, [rip + _x]
+        ```
+
+    which means:
+
+        ```text
+        current instruction address
+        + offset to x
+        ```
+
+    which works regardless of where the loader placed the program.
+
+
+C++ vs Assembly Pointers
+
+    C++
+
+            ```cpp
+            int *p;
+            ```
+
+        Compiler knows:
+
+            type      = int
+            sizeof    = 4
+            *p        = read 4 bytes
+            p + 1     = add 4
+
+        Types matter.
+
+        Example:
+
+            ```cpp
+            int *p;
+            p++;
+            ```
+
+        Compiler generates: p = p + 4
+
+    Assembly
+
+        Assembly only sees:
+
+            ```asm
+            mov rbx, address
+            ```
+
+        `rbx` is just: 64-bit integer. No type.
+
+        You decide:
+
+            ```asm
+            mov al, [rbx]      ; 1 byte
+            mov ax, [rbx]      ; 2 bytes
+            mov eax, [rbx]     ; 4 bytes
+            mov rax, [rbx]     ; 8 bytes
+            ```
+
+        Likewise:
+
+            ```asm
+            add rbx, 1
+            add rbx, 4
+            add rbx, 128
+            ```
+
+        All are equally valid. The CPU has no idea whether `rbx` points to:
+
+        * int
+        * float
+        * char
+        * struct
+        * array
+
+        Those concepts exist only in higher-level languages.
+
+
+Mental Model
+
+    C++:
+        pointer = address + type
+
+    Assembly:
+        pointer = address only
+
+    and
+
+        MOV [addr]  -> read/write memory
+        LEA [addr]  -> compute address only
+
+
+-------------------------------------------------------------------------------
 Calling Convention
 ------------------
 
