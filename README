@@ -112,6 +112,602 @@ These are same instructions.
 
 
 -------------------------------------------------------------------------------
+Special Registers in x86-64
+---------------------------
+
+Unlike general-purpose registers (RAX, RBX, RCX, etc.), some registers have
+special roles that the CPU and calling conventions rely upon.
+
+RSP - Stack Pointer
+
+    Purpose: RSP points to the top of the current stack.
+
+    The stack grows downward in memory:
+
+        ```
+        Higher addresses
+        +-------------+
+        |     ...     |
+        +-------------+
+        | local vars  |
+        +-------------+
+        | return addr |
+        +-------------+ <-- RSP
+        |      ↓      |
+        |     ...     |
+        Lower addresses
+        ```
+
+    The stack is used for:
+
+        * Function call return addresses
+        * Saving registers
+        * Local variables
+        * Temporaries
+        * Passing extra arguments
+
+    Common Instructions
+
+        Push a value:
+
+            ```
+            push rax
+            ```
+
+        Equivalent to:
+
+            ```
+            sub rsp, 8
+            mov [rsp], rax
+            ```
+
+        Pop a value:
+
+            ```
+            pop rax
+            ```
+
+        Equivalent to:
+
+            ```
+            mov rax, [rsp]
+            add rsp, 8
+            ```
+
+        Allocate stack space:
+
+            ```
+            sub rsp, 32
+            ```
+
+        Release stack space:
+
+            ```
+            add rsp, 32
+            ```
+
+        Access local variables:
+
+            ```
+            mov rax, [rsp]
+            mov rax, [rsp + 8]
+            mov [rsp + 16], rcx
+            ```
+
+        Function calls also use RSP:
+
+            ```
+            call func
+            ```
+
+        The CPU effectively performs:
+
+            ```
+            push rip
+            jmp func
+            ```
+
+        Return:
+
+            ```
+            ret
+            ```
+
+        The CPU effectively performs:
+
+            ```
+            pop rip
+            ```
+
+    ABI Requirements
+
+        In the x86-64 System V ABI:
+
+            * Stack must be 16-byte {align}ed before a call instruction.
+            * The caller usually adjusts RSP.
+            * Most functions temporarily modify RSP to create a stack frame.
+
+        Example:
+
+            ```
+            sub rsp, 32
+            ...
+            add rsp, 32
+            ret
+            ```
+
+RBP - Base Pointer (Frame Pointer)
+
+    Purpose: RBP traditionally marks the beginning of a function's stack frame.
+
+    Example:
+
+        Before call:
+
+            ```
+            +----------------+
+            | caller data    |
+            +----------------+
+            ```
+
+        After {prologue}:
+
+            ```
+            push rbp
+            mov rbp, rsp
+            sub rsp, 32
+            ```
+
+        Stack becomes:
+
+            ```
+            Higher addresses
+
+            arg n
+            ...
+            return address
+            saved rbp      <-- RBP
+            local variable
+            local variable <-- RSP
+
+            Lower addresses
+            ```
+
+        RBP provides stable offsets:
+
+            ```
+            [rbp + 8]   return address
+            [rbp + 16]  first stack argument
+            [rbp - 8]   local variable
+            [rbp - 16]  local variable
+            ```
+
+    Common Instructions
+
+        Save old frame pointer:
+
+            ```
+            push rbp
+            ```
+
+        Create frame:
+
+            ```
+            mov rbp, rsp
+            ```
+
+        Access locals:
+
+            ```
+            mov rax, [rbp - 8]
+            ```
+
+        Access stack arguments:
+
+            ```
+            mov rax, [rbp + 16]
+            ```
+
+        Destroy frame:
+
+            ```
+            mov rsp, rbp
+            pop rbp
+            ret
+            ```
+
+    Modern Compilers
+
+        Compilers often omit frame pointers:
+
+            ```
+            -fomit-frame-pointer
+            ```
+
+        and simply use RSP directly.
+
+            This frees RBP as another general-purpose register.
+
+
+RIP - Instruction Pointer
+
+    Purpose: RIP contains the address of the next instruction to execute.
+
+    Example:
+
+            Address      Instruction
+            ---
+            1000         mov rax, 5
+            1007         add rax, 3
+            100B         ret
+
+        Execution:
+
+            RIP = 1000
+            execute mov
+
+            RIP = 1007
+            execute add
+
+            RIP = 100B
+            execute ret
+
+        You normally cannot directly write:
+
+            ```
+            mov rip, rax
+            ```
+
+        because RIP is not a normal register.
+
+    Instructions That Modify RIP
+
+        Unconditional jump:
+
+            ```
+            jmp label
+            ```
+
+        Conditional jump:
+
+            ```
+            je label
+            jne label
+            jg label
+            jl label
+            ```
+
+        Function call:
+
+            ```
+            call func
+            ```
+
+        Function return:
+
+            ```
+            ret
+            ```
+
+        Indirect jump:
+
+            ```
+            jmp rax
+            ```
+
+        Indirect call:
+
+            ```
+            call rax
+            ```
+
+    RIP-Relative Addressing
+
+        One of the major improvements in x86-64.
+
+        Example:
+
+            ```
+            lea rax, [rip + message]
+            ```
+
+        This computes:
+
+            ```
+            rax = address_of_message
+            ```
+
+        This allows position-independent code (PIC), shared libraries, and
+        ASLR.
+
+
+RFLAGS - Flag Register
+
+    Purpose: RFLAGS stores status information about previous operations.
+
+    The CPU automatically updates flags after many instructions.
+
+    ## Important Flags
+
+            CF - Carry Flag
+            ZF - Zero Flag
+            SF - Sign Flag
+            OF - Overflow Flag
+            PF - Parity Flag
+
+        Most programs primarily use:
+
+            CF
+            ZF
+            SF
+            OF
+
+    Zero Flag (ZF)
+
+        Set when result is zero.
+
+        Example:
+
+            ```
+            mov rax, 5
+            sub rax, 5
+            ```
+
+        Result:
+
+            ```
+            rax = 0
+            ZF = 1
+            ```
+
+        Used by:
+
+            ```
+            je
+            jne
+            cmove
+            cmovne
+            ```
+
+    Carry Flag (CF)
+
+        Indicates unsigned overflow.
+
+        Example:
+
+            ```
+            mov al, 255
+            add al, 1
+            ```
+
+        Result:
+
+            ```
+            al = 0
+            CF = 1
+            ```
+
+        Used by:
+
+            ```
+            jc
+            jnc
+            adc
+            sbb
+            ```
+
+    Sign Flag (SF)
+
+        Set if result is negative.
+
+        Example:
+
+            ```
+            mov rax, 3
+            sub rax, 5
+            ```
+
+        Result:
+
+            ```
+            rax = -2
+            SF = 1
+            ```
+
+        Used by:
+
+            ```
+            js
+            jns
+            jl
+            jge
+            ```
+
+    Overflow Flag (OF)
+
+        Indicates signed overflow.
+
+        Example:
+
+            ```
+            mov al, 127
+            add al, 1
+            ```
+
+        Result:
+
+            ```
+            al = -128
+            OF = 1
+            ```
+
+        Used by:
+
+            ```
+            jo
+            jno
+            jl
+            jg
+            jle
+            jge
+            ```
+
+
+Instructions That Set Flags
+
+    Arithmetic:
+
+        ```
+        add
+        sub
+        inc
+        dec
+        adc
+        sbb
+        neg
+        ```
+
+    Comparison:
+
+        ```
+        cmp
+        ```
+
+    Logical:
+
+        ```
+        and
+        or
+        xor
+        test
+        ```
+
+    Shift operations:
+
+        ```
+        shl
+        shr
+        sar
+        ```
+
+    Example:
+
+        ```
+        cmp rax, rbx
+        je equal
+        ```
+
+    Equivalent to:
+
+        ```
+        sub rax, rbx
+        discard result
+        examine flags
+        ```
+
+
+Conditional Jumps
+
+    After:
+
+        ```
+        cmp rax, rbx
+        ```
+
+    Instructions may inspect flags:
+
+        ```
+        je     ZF == 1
+        jne    ZF == 0
+        jl     SF != OF
+        jle    ZF == 1 or SF != OF
+        jg     ZF == 0 and SF == OF
+        jge    SF == OF
+        jb     CF == 1
+        jbe    CF == 1 or ZF == 1
+        ja      CF == 0 and ZF == 0
+        jae     CF == 0
+        ```
+
+    Signed comparisons generally use:
+
+        ```
+        SF
+        OF
+        ZF
+        ```
+
+    Unsigned comparisons generally use:
+
+        ```
+        CF
+        ZF
+        ```
+
+
+Typical Function Execution
+
+    Caller:
+
+        ```
+        call add
+        ```
+
+    CPU:
+
+        ```
+        push return_address
+        rip = address_of_add
+        ```
+
+    Function:
+
+        ```
+        push rbp
+        mov rbp, rsp
+        sub rsp, 32
+
+        cmp rdi, rsi
+        jl smaller
+        ```
+
+        ```
+        smaller:
+        mov rsp, rbp
+        pop rbp
+        ret
+        ```
+
+    CPU:
+
+        ```
+        pop rip
+        ```
+
+    Execution resumes at the instruction after the original call.
+
+
+Summary
+
+    RSP
+        Stack pointer.
+        Modified by push, pop, call, ret, sub/add rsp.
+
+    RBP
+        Frame pointer.
+        Used for stable stack frame references.
+
+    RIP
+        Instruction pointer.
+        Modified by jmp, call, ret, conditional jumps.
+
+    RFLAGS
+        Status register.
+        Set by arithmetic, comparison, logical, and shift instructions.
+        Read by conditional jumps and conditional moves.
+
+
+-------------------------------------------------------------------------------
 History of x86 / AMD64 Processors
 -----------------------------------
 
