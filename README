@@ -708,206 +708,286 @@ Summary
 
 
 -------------------------------------------------------------------------------
+Intel vs AT&T syntax
+--------------------
+
+Again remember:
+
+    ABI = “how functions talk”
+    ISA = “what CPU understands”
+    Syntax = “how humans write assembly”
+
+A comparison
+
+    AT&T syntax (default on macOS)
+
+        movq %rdi, %rax
+        addq %rsi, %rax
+
+    Intel syntax
+
+        mov rax, rdi
+        add rax, rsi
+
+    Key differences:
+
+        | Concept    | AT&T           | Intel             |
+        | ---------- | -------------- | ----------------- |
+        | registers  | `%rax`         | `rax`             |
+        | immediates | `$5`           | `5`               |
+        | order      | `src, dst`     | `dst, src`        |
+        | suffix     | `movq`, `addq` | just `mov`, `add` |
+
+How to write Intel syntax on macOS: two options
+
+    1. use Clang + .intel_syntax (recommended)
+
+        add.s:
+
+            .intel_syntax noprefix
+
+            .text
+            .globl _add
+
+            _add:
+                mov rax, rdi
+                add rax, rsi
+                ret
+
+
+        .intel_syntax noprefix → enables Intel syntax
+        noprefix removes % requirement (so rax instead of %rax)
+
+
+    2. use GAS explicitly (GNU assembler style)
+
+       On macOS, as is still LLVM integrated, but supports Intel mode
+       similarly:
+
+           .intel_syntax noprefix
+
+       works the same.
+
+
+    3. One could also force Intel syntax via compiler flags
+
+        ASFLAGS = -masm=intel
+
+       But on macos, -masm=intel is not consistently supported for Mach-O
+       toolchain. .intel_syntax is the reliable method
+
+
+-------------------------------------------------------------------------------
 History of x86 / AMD64 Processors
 -----------------------------------
 
-## 1978 - Intel 8086
+1978 - Intel 8086
 
-* First x86 processor.
-* 16-bit CPU.
-* 20-bit address bus (1 MB address space).
-* Introduced segmented memory:
-  physical = segment * 16 + offset
-* Registers:
-  AX BX CX DX
-  SP BP SI DI
-  CS DS ES SS
-* Foundation of the x86 instruction set.
+    * First x86 processor.
+    * 16-bit CPU.
+    * 20-bit address bus (1 MB address space).
+    * Introduced segmented memory:
+      physical = segment * 16 + offset
+    * Registers:
+      AX BX CX DX
+      SP BP SI DI
+      CS DS ES SS
+    * Foundation of the x86 instruction set.
 
-## 1979 - Intel 8088
+1979 - Intel 8088
 
-* Internally same architecture as 8086.
-* External data bus reduced to 8 bits.
-* Cheaper system designs.
-* Used in the original IBM PC (1981).
-* Responsible for x86 becoming the dominant PC architecture.
+    * Internally same architecture as 8086.
+    * External data bus reduced to 8 bits.
+    * Cheaper system designs.
+    * Used in the original IBM PC (1981).
+    * Responsible for x86 becoming the dominant PC architecture.
 
-## 1982 - Intel 80286 (286)
+1982 - Intel 80286 (286)
 
-* 16-bit CPU.
-* Introduced Protected Mode.
-* 24-bit addressing (16 MB).
-* Added memory protection and privilege levels.
-* Intended for multitasking operating systems.
-* Still had compatibility issues with DOS.
+    * 16-bit CPU.
+    * Introduced Protected Mode.
+    * 24-bit addressing (16 MB).
+    * Added memory protection and privilege levels.
+    * Intended for multitasking operating systems.
+    * Still had compatibility issues with DOS.
 
-## 1985 - Intel 80386 (386)
+1985 - Intel 80386 (386)
 
-* Huge milestone.
-* First 32-bit x86 processor.
-* Registers expanded:
-  EAX EBX ECX EDX
-  ESP EBP ESI EDI
-* 32-bit address space (4 GB).
-* Added paging and virtual memory.
-* Protected mode became practical.
-* Basis of modern operating systems.
+    * Huge milestone.
+    * First 32-bit x86 processor.
+    * Registers expanded:
+      EAX EBX ECX EDX
+      ESP EBP ESI EDI
+    * 32-bit address space (4 GB).
+    * Added paging and virtual memory.
+    * Protected mode became practical.
+    * Basis of modern operating systems.
 
-## 1989 - Intel 80486 (486)
+1989 - Intel 80486 (486)
 
-* Improved 386 architecture.
-* Added on-chip floating-point unit (on most models).
-* Added on-chip cache.
-* Added pipelining.
-* Much higher performance without changing ISA.
+    * Improved 386 architecture.
+    * Added on-chip floating-point unit (on most models).
+    * Added on-chip cache.
+    * Added pipelining.
+    * Much higher performance without changing ISA.
 
-## 1993 - Pentium (P5)
+1993 - Pentium (P5)
 
-* Superscalar execution.
-* Two instruction pipelines.
-* Wider memory bus.
-* Better branch prediction.
-* Significantly improved floating-point performance.
+    * Superscalar execution.
+    * Two instruction pipelines.
+    * Wider memory bus.
+    * Better branch prediction.
+    * Significantly improved floating-point performance.
 
-## 1995 - Pentium Pro (P6)
+1995 - Pentium Pro (P6)
 
-* Out-of-order execution.
-* Register renaming.
-* Speculative execution.
-* Dynamic scheduling.
-* Modern CPU microarchitecture concepts appear.
+    * Out-of-order execution.
+    * Register renaming.
+    * Speculative execution.
+    * Dynamic scheduling.
+    * Modern CPU microarchitecture concepts appear.
 
-## 1997 - Pentium II
+1997 - Pentium II
 
-* Improved P6 design.
-* Added MMX instructions.
-* Better multimedia performance.
+    * Improved P6 design.
+    * Added MMX instructions.
+    * Better multimedia performance.
 
-## 1999 - Pentium III
+1999 - Pentium III
 
-* Added SSE instructions.
-* SIMD became increasingly important.
+    * Added SSE instructions.
+    * SIMD became increasingly important.
 
-## 2000 - Pentium 4 (NetBurst)
+2000 - Pentium 4 (NetBurst)
 
-* Very deep pipeline.
-* Extremely high clock frequencies.
-* Added SSE2.
-* Poor power efficiency.
-* Eventually considered a dead-end design.
+    * Very deep pipeline.
+    * Extremely high clock frequencies.
+    * Added SSE2.
+    * Poor power efficiency.
+    * Eventually considered a dead-end design.
 
-## Meanwhile: AMD enters the picture
 
-## 1996 - AMD K5
+...
+Meanwhile: AMD enters the picture
+...
 
-* AMD's first in-house x86 processor.
 
-## 1997 - AMD K6
+1996 - AMD K5
 
-* Competitive with Intel's Pentium line.
-* Helped AMD become a serious x86 competitor.
+    * AMD's first in-house x86 processor.
 
-## 1999 - AMD Athlon (K7)
+1997 - AMD K6
 
-* Extremely competitive performance.
-* Often beat Intel's Pentium III and Pentium 4.
+    * Competitive with Intel's Pentium line.
+    * Helped AMD become a serious x86 competitor.
 
-## 2003 - AMD64 (x86-64)
+1999 - AMD Athlon (K7)
 
-* One of the most important moments in processor history.
-* AMD extends x86 to 64 bits.
-* Registers become:
-  RAX RBX RCX RDX
-  RSP RBP RSI RDI
-* Adds:
-  R8-R15
-* 64-bit pointers.
-* More registers.
-* Better calling conventions.
-* Backward compatible with 32-bit and 16-bit code.
+    * Extremely competitive performance.
+    * Often beat Intel's Pentium III and Pentium 4.
 
-Intel initially pursued a different architecture:
-IA-64 (Itanium)
+2003 - AMD64 (x86-64)
 
-Itanium failed commercially.
+    * One of the most important moments in processor history.
+    * AMD extends x86 to 64 bits.
+    * Registers become:
+      RAX RBX RCX RDX
+      RSP RBP RSI RDI
+    * Adds:
+      R8-R15
+    * 64-bit pointers.
+    * More registers.
+    * Better calling conventions.
+    * Backward compatible with 32-bit and 16-bit code.
 
-Intel eventually adopted AMD's extensions.
+
+...
+Intel initially pursued a different architecture: IA-64 (Itanium)
+    Itanium failed commercially.
+    Intel eventually adopted AMD's extensions.
 
 Intel implementation names:
-EM64T
-Intel 64
+    EM64T
+    Intel 64
 
 Today: AMD64, x86-64, Intel 64 all refer to essentially the same ISA.
+...
 
-## 2006 - Intel Core Architecture
 
-* Replaced NetBurst.
-* Shorter pipelines.
-* Better power efficiency.
-* Based partly on lessons from Pentium Pro.
+2006 - Intel Core Architecture
 
-## 2008 - Intel Nehalem
+    * Replaced NetBurst.
+    * Shorter pipelines.
+    * Better power efficiency.
+    * Based partly on lessons from Pentium Pro.
 
-* Integrated memory controller.
-* Hyper-Threading returns.
-* Large performance improvements.
+2008 - Intel Nehalem
 
-## 2011 - Intel Sandy Bridge
+    * Integrated memory controller.
+    * Hyper-Threading returns.
+    * Large performance improvements.
 
-* Major architectural improvement.
-* Strong single-threaded performance.
-* Became one of the most successful Intel generations.
+2011 - Intel Sandy Bridge
 
-## 2013+ - Haswell, Skylake, and successors
+    * Major architectural improvement.
+    * Strong single-threaded performance.
+    * Became one of the most successful Intel generations.
 
-* Incremental improvements.
-* AVX and AVX2 expansion.
-* Better branch prediction.
-* Larger caches.
-* Increasing focus on power efficiency.
+2013+ - Haswell, Skylake, and successors
 
-## AMD Revival
+    * Incremental improvements.
+    * AVX and AVX2 expansion.
+    * Better branch prediction.
+    * Larger caches.
+    * Increasing focus on power efficiency.
 
-## 2017 - AMD Zen
 
-* Massive architectural redesign.
-* Competitive IPC.
-* High core counts.
-* Restored competition in x86 CPUs.
+...
+AMD Revival
+...
 
-## 2019 - Zen 2
 
-* Chiplet architecture.
-* Major efficiency gains.
+2017 - AMD Zen
 
-## 2020 - Zen 3
+    * Massive architectural redesign.
+    * Competitive IPC.
+    * High core counts.
+    * Restored competition in x86 CPUs.
 
-* Significant IPC improvements.
-* Industry-leading performance.
+2019 - Zen 2
 
-## 2022+ - Zen 4 and later
+    * Chiplet architecture.
+    * Major efficiency gains.
 
-* AVX-512 support on many models.
-* Higher frequencies.
-* Continued refinement of x86-64.
+2020 - Zen 3
 
-## Present Day
+    * Significant IPC improvements.
+    * Industry-leading performance.
 
-Modern x86-64 CPUs are descendants of the 8086.
+2022+ - Zen 4 and later
 
-The remarkable property of x86 is backward compatibility:
-8086 → 286 → 386 → 486 → Pentium → AMD64 → Zen/Core
+    * AVX-512 support on many models.
+    * Higher frequencies.
+    * Continued refinement of x86-64.
 
-A modern x86-64 processor can still execute code written for the original 8086,
-even though internally it uses:
+...
+Present Day
 
-* deep pipelines
-* out-of-order execution
-* register renaming
-* speculative execution
-* SIMD units
-* multiple cores
-* complex cache hierarchies
+    Modern x86-64 CPUs are descendants of the 8086.
 
-Architecturally, today's CPUs still expose an ISA whose ancestry can be traced
-directly back to the Intel 8086 released in 1978.
+    The remarkable property of x86 is backward compatibility:
+    8086 → 286 → 386 → 486 → Pentium → AMD64 → Zen/Core
+
+    A modern x86-64 processor can still execute code written for the original
+    8086, even though internally it uses:
+
+    * deep pipelines
+    * out-of-order execution
+    * register renaming
+    * speculative execution
+    * SIMD units
+    * multiple cores
+    * complex cache hierarchies
+
+    Architecturally, today's CPUs still expose an ISA whose ancestry can be
+    traced directly back to the Intel 8086 released in 1978.
