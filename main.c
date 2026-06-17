@@ -1,26 +1,16 @@
 #include <stdio.h>
 
-extern long min(long a, long b);
+#include "helper.h"
 
 int main(void)
 {
-    long x = 40;
-    long y = 32;
-    long m = min(x, y);
+    short a = 40;
+    short b = 32;
+    short c = 12;
+    short d = -12;
+    long m = min4(a, b, c, d);
 
-    printf("min(%ld, %ld) = %ld\n", x, y, m);
-
-    x = 10;
-    y = 12;
-    m = min(x, y);
-
-    printf("min(%ld, %ld) = %ld\n", x, y, m);
-
-    x = -10;
-    y = -12;
-    m = min(x, y);
-
-    printf("min(%ld, %ld) = %ld\n", x, y, m);
+    printf("min(%i, %i, %i, %i) = %ld\n", a, b, c, d, m);
 
     return 0;
 }

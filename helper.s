@@ -1,1 +1,1 @@
-.include "min.s"
+.include "min4.s"
