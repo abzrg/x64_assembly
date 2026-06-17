@@ -949,6 +949,101 @@ Equivalent conceptual behavior:
 
 
 -------------------------------------------------------------------------------
+Jumps, Labels and the Compare Instruction
+-----------------------------------------
+
+1. Labels
+
+    Labels are just **named memory addresses**.
+
+        start:              ; label = address of this instruction
+            mov rax, 1      ; normal instruction
+            mov rbx, 2
+
+        loop_begin:         ; another label (a jump target)
+            inc rax
+
+    Key idea: A label is NOT an instruction. It becomes an address after
+    assembly.
+
+2. Unconditional Jump (JMP)
+
+        jmp start          ; RIP = address of "start"
+
+    With label:
+
+        mov rax, 0
+        jmp skip           ; jump forward unconditionally
+        mov rax, 999       ; skipped
+        skip:              ; execution continues here
+            inc rax
+
+3. Conditional Jumps
+
+    These depend on **RFLAGS** (set by CMP, ADD, SUB, etc.).
+
+    Example: equality
+
+        mov rax, 5
+        mov rbx, 5
+
+        cmp rax, rbx       ; sets flags (rax - rbx)
+
+        je equal           ; jump if equal (ZF = 1)
+
+        mov rcx, 0         ; executed only if not equal
+        jmp done
+
+        equal:
+            mov rcx, 1     ; executed if equal
+
+        done:
+
+    Common conditional jumps
+
+        je  label   ; equal (ZF = 1)
+        jne label   ; not equal (ZF = 0)
+
+        jg  label   ; greater (signed)
+        jl  label   ; less (signed)
+
+        ja  label   ; above (unsigned)
+        jb  label   ; below (unsigned)
+
+4. CMP instruction
+
+    `CMP` = subtraction without storing result.
+
+        cmp rax, rbx      ; computes rax - rbx internally
+                          ; result is NOT stored
+                          ; only flags are updated
+
+    Equivalent conceptual model:
+
+        tmp = rax - rbx
+        set FLAGS based on tmp
+        discard tmp
+
+    Example usage:
+
+        mov rax, 10
+        mov rbx, 20
+
+        cmp rax, rbx      ; 10 - 20 → negative result
+
+        jl smaller        ; jump if rax < rbx
+
+    Loop using CMP + Jumps
+
+        mov rcx, 5
+
+        loop_start:
+            dec rcx           ; rcx = rcx - 1
+            cmp rcx, 0        ; check if rcx == 0
+            jne loop_start    ; repeat if not zero
+
+
+-------------------------------------------------------------------------------
 History of x86 / AMD64 Processors
 -----------------------------------
 
