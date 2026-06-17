@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -Wall -Wextra -O2 -target x86_64-apple-macos
+CFLAGS = -Wall -Wextra -g -O0 -target x86_64-apple-macos
 
 # NOTE: `-target x86_64-apple-macos` tells Clang: pretend the machine we're
 # building for is an Intel Mac. Clang then:

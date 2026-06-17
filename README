@@ -708,6 +708,126 @@ Summary
 
 
 -------------------------------------------------------------------------------
+Debugging using LLDB
+--------------------
+
+    $ lldb ./a.out
+
+    # set breakpoint
+
+        (lldb) breakpoint set --name main
+        (lldb) b main
+
+    # Break at your assembly function (Important: macOS adds _ prefix)
+
+        (lldb) b _add
+
+    # Break at a specific instruction (assembly level)
+
+        # First disassemble:
+        (lldb) disassemble --name _add
+
+        # Then set breakpoint by address if needed:
+        (lldb) b *0x100003f20
+
+    # Run program. Execution then stops at breakpoint.
+
+        (lldb) run
+
+    # Usual operations: step into, over, ...
+    # Once inside _add
+
+        (lldb) stepi # or is - step by step instruction
+        (lldb) nexti # - step over (function-level)
+
+        (lldb) disassemble --frame # View assembly around current instruction
+        (lldb) disassemble --pc # more verbose
+
+    # Inspect registers (VERY important for your use case)
+
+        # Show all registers
+        (lldb) register read
+
+        # Show specific registers
+        (lldb) register read rax rdi rsi rip rsp rbp
+
+        # Watch register changes while stepping: just keep doing:
+        (lldb) register read rax rip
+
+    # Inspect memory (stack debugging)
+
+        # Examine stack pointer:
+        (lldb) memory read $rsp
+
+        # Read 64-bit words:
+        (lldb) memory read -f x -s 8 -c 8 $rsp
+
+            # Meaning:
+            # -f x → hex
+            # -s 8 → 8-byte chunks
+            # -c 8 → 8 values
+
+    # See function arguments (important for ABI learning)
+
+        # For x86-64 System V:
+        #     arg1 -> rdi
+        #     arg2 -> rsi
+        # So:
+        (lldb) register read rdi rsi
+
+    # Step back into C and assembly together
+
+        # If you break in main:
+        (lldb) b main
+        (lldb) run
+
+        # Then:
+        (lldb) disassemble --frame
+
+        # You’ll see call instruction:
+
+            callq _add
+
+        # Step into it:
+        (lldb) si
+
+        # Now you're inside assembly.
+
+    # View mixed C + assembly
+
+        (lldb) disassemble --mixed
+
+        # This is extremely useful when debugging C calling assembly.
+
+    # Watch variables (C side)
+
+        (lldb) frame variable
+
+        # or
+        (lldb) p x
+        (lldb) p y
+
+
+Typical workflow for your setup
+
+    When debugging C + assembly like yours:
+
+    1. breakpoint main
+    2. run
+    3. step to call _add
+    4. step into _add
+    5. si (single-step assembly)
+    6. register read rax rdi rsi rip
+    7. disassemble --frame
+
+
+ADVANCED (later)
+
+    how to debug stack frames manually (prologue/epilogue)
+    how call / ret actually modify rsp in LLDB step-by-step
+    or how to break on every instruction automatically (trace mode)
+
+-------------------------------------------------------------------------------
 Intel vs AT&T syntax
 --------------------
 
@@ -775,6 +895,57 @@ How to write Intel syntax on macOS: two options
 
        But on macos, -masm=intel is not consistently supported for Mach-O
        toolchain. .intel_syntax is the reliable method
+
+
+-------------------------------------------------------------------------------
+Basic Instructions
+------------------
+
+Below are minimal Intel-syntax examples + inline comments only for each
+instruction.
+
+MOV
+
+    mov rax, rdi      ; copy value from rdi into rax (rax = rdi)
+    mov rbx, 10       ; load immediate constant 10 into rbx
+    mov [rsp], rax    ; store rax into memory at address rsp
+    mov rax, [rsp]    ; load value from memory at rsp into rax
+
+ADD
+
+    add rax, rsi      ; rax = rax + rsi
+    add rax, 5        ; rax = rax + 5
+    add [rsp], rax    ; memory[rsp] = memory[rsp] + rax
+
+SUB
+
+    sub rax, rsi      ; rax = rax - rsi
+    sub rax, 10       ; rax = rax - 10
+    sub rsp, 32       ; move stack pointer down (allocate stack space)
+
+INC
+
+    inc rax           ; rax = rax + 1
+    inc qword [rsp]   ; increment 8-byte value in memory at rsp
+
+DEC
+
+    dec rax           ; rax = rax - 1
+    dec byte [rbx]    ; decrement 1-byte value at address rbx
+
+XCHG
+
+    xchg rax, rbx     ; swap rax and rbx
+    xchg rax, [rsp]   ; swap rax with memory at rsp
+
+RET
+    ret               ; pop return address from stack into rip and jump back
+
+Equivalent conceptual behavior:
+
+    rip = [rsp]
+    rsp = rsp + 8
+    jump to rip
 
 
 -------------------------------------------------------------------------------
