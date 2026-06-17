@@ -16,5 +16,11 @@ int main(void)
 
     printf("min(%ld, %ld) = %ld\n", x, y, m);
 
+    x = -10;
+    y = -12;
+    m = min(x, y);
+
+    printf("min(%ld, %ld) = %ld\n", x, y, m);
+
     return 0;
 }

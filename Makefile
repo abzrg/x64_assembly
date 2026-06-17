@@ -61,13 +61,13 @@ CFLAGS = -Wall -Wextra -g -O0 -target x86_64-apple-macos -masm=intel
 
 all: a.out
 
-a.out: main.o min.o
+a.out: main.o helper.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c $<
 
-min.o: min.s
+helper.o: helper.s
 	$(CC) $(CFLAGS) -c $<
 
 clean:
