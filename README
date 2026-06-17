@@ -1044,6 +1044,80 @@ Jumps, Labels and the Compare Instruction
 
 
 -------------------------------------------------------------------------------
+What CAN and CANNOT be operands?
+--------------------------------
+
+Allowed operand types
+
+    1. Registers
+
+        mov rax, rbx
+        add rax, rsi
+
+    2. Immediate values (constants)
+
+        mov rax, 10
+        add rbx, 5
+
+    3. Memory operands
+
+        mov rax, [rsp]        ; load from memory
+        mov [rsp], rax        ; store to memory
+
+    4. Register + offset memory
+
+        mov rax, [rbp - 8]    ; local variable
+        mov rbx, [rdi + 16]   ; struct field
+
+    5. RIP-relative (x86-64 only)
+
+        mov rax, [rip + label] ; position-independent access
+
+What CANNOT be operands?
+
+    1. Memory-to-memory operations are NOT allowed
+
+            mov [rax], [rbx]     ; INVALID
+            add [rsp], [rbp]     ; INVALID
+
+        You must use a register:
+
+            mov rax, [rbx]
+            mov [rsp], rax
+
+    2. Immediate to memory for some instructions is limited
+
+        Some CPUs allow it, but general rule:
+
+            add [rsp], 10        ; sometimes valid but not universal pattern
+
+        Safe pattern:
+
+            mov rax, [rsp]
+            add rax, 10
+            mov [rsp], rax
+
+    3. You cannot use RIP directly as a normal operand
+
+            mov rip, rax         ; NOT POSSIBLE
+
+        RIP is only modified by:
+
+        * jmp
+        * call
+        * ret
+        * conditional jumps
+
+    4. CMP does not produce a value
+
+            mov rax, cmp rbx, rcx   ; INVALID
+
+        Correct:
+
+            cmp rbx, rcx
+
+
+-------------------------------------------------------------------------------
 History of x86 / AMD64 Processors
 -----------------------------------
 
