@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -Wall -Wextra -g -O0 -target x86_64-apple-macos
+CFLAGS = -Wall -Wextra -g -O0 -target x86_64-apple-macos -masm=intel
 
 # NOTE: `-target x86_64-apple-macos` tells Clang: pretend the machine we're
 # building for is an Intel Mac. Clang then:
@@ -61,13 +61,13 @@ CFLAGS = -Wall -Wextra -g -O0 -target x86_64-apple-macos
 
 all: a.out
 
-a.out: main.o add.o
+a.out: main.o min.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c $<
 
-add.o: add.s
+min.o: min.s
 	$(CC) $(CFLAGS) -c $<
 
 clean:

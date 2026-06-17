@@ -1118,6 +1118,287 @@ What CANNOT be operands?
 
 
 -------------------------------------------------------------------------------
+Calling Convention
+------------------
+
+A **calling convention** is a set of rules that answers:
+
+    "When function A calls function B, how are arguments passed, and how is the
+    return value handled?"
+
+It defines things like:
+
+    * Where arguments go (registers vs stack)
+    * Where return values go
+    * Which registers must be preserved
+    * How the stack is managed across calls
+
+So it’s specifically about **function calls**.
+
+    Note: an **ABI (Application Binary Interface)**, is a much broader
+          contract.
+
+          It includes:
+
+          * Calling conventions (yes, inside it)
+          * Register usage rules
+          * Stack alignment rules
+          * Binary format (Mach-O on macOS)
+          * Name mangling rules (C++ especially)
+          * System interfaces (syscalls, etc.)
+          * Data layout (struct alignment, sizeof rules)
+
+          ABI                = full binary-level contract
+          Calling convention = one part of the ABI (function calls only)
+
+          ABI                = "how binaries work together"
+          Calling convention = "how functions talk to each other"
+
+On macOS Intel (or Rosetta x86-64), the calling convention is:
+
+    **System V AMD64 ABI (with Mach-O naming rules)**
+
+Argument passing rules (integers / pointers)
+
+    * First 6 integer/pointer arguments:
+
+        | Argument | Register |
+        | -------- | -------- |
+        | 1st      | rdi      |
+        | 2nd      | rsi      |
+        | 3rd      | rdx      |
+        | 4th      | rcx      |
+        | 5th      | r8       |
+        | 6th      | r9       |
+
+    * After that → stack.
+
+    * Return value:
+
+        | Type              | Register |
+        | ----------------- | -------- |
+        | integer / pointer | rax      |
+
+    ---
+
+    Example in C++
+
+        ```cpp
+        long add(long a, long b) {
+            return a + b;
+        }
+        ```
+
+    Assembly view:
+
+        ```asm
+        mov rax, rdi   ; a
+        add rax, rsi   ; b
+        ret
+        ```
+
+    Example call site:
+
+        ```cpp
+        add(10, 20);
+        ```
+
+    becomes:
+
+        ```asm
+        mov rdi, 10
+        mov rsi, 20
+        call _add
+        ```
+
+Stack alignment rule (important detail)
+
+    Before a `call`, the stack must be: **16-byte aligned**
+
+    So compilers often adjust:
+
+        ```asm
+        sub rsp, 8
+        call _add
+        add rsp, 8
+        ```
+
+    This ensures SIMD instructions (SSE/AVX) behave correctly.
+
+MacOS naming rule (Mach-O specific)
+
+    On macOS:
+
+        ```text
+        C/C++ function: add
+        assembly symbol: _add
+        ```
+
+    So:
+
+        ```asm
+        .globl _add
+        _add:
+        ```
+
+    C++ sees:
+
+        ```cpp
+        extern "C" long add(long, long);
+        ```
+
+    The linker maps:
+
+        ```text
+        add  -> _add
+        ```
+
+Passing integers from C++ → Assembly
+
+    C++ code:
+
+        ```cpp
+        extern "C" long add(long a, long b);
+
+        int main() {
+            long x = add(3, 7);
+        }
+        ```
+
+    Assembly:
+
+        ```asm
+        .globl _add
+
+        _add:
+            mov rax, rdi    ; a
+            add rax, rsi    ; b
+            ret
+        ```
+
+Returning integers from Assembly → C++
+
+    Return is always:
+
+        ```text
+        rax
+        ```
+
+    Example:
+
+        ```asm
+        mov rax, 42
+        ret
+        ```
+
+    C++:
+
+        ```cpp
+        long x = add();
+        ```
+
+Passing more than 6 arguments
+
+    Extra arguments go on the stack:
+
+        ```cpp
+        foo(a,b,c,d,e,f,g);
+        ```
+
+    Registers:
+
+        ```
+        rdi rsi rdx rcx r8 r9
+        ```
+
+    Then:
+
+        ```
+        g → stack
+        ```
+
+Stack-based argument example (conceptual)
+
+    ```asm
+    mov rdi, 1
+    mov rsi, 2
+    mov rdx, 3
+    mov rcx, 4
+    mov r8,  5
+    mov r9,  6
+
+    push 7
+    call _foo
+    ```
+
+What registers must be preserved?
+
+    Caller-saved (volatile)
+
+        These may be overwritten by called functions:
+
+            rax, rcx, rdx, rsi, rdi, r8, r9, r10, r11
+
+    Callee-saved (must preserve if used)
+
+            rbx, rbp, r12, r13, r14, r15
+
+        So if your assembly uses `rbx`, you must do:
+
+            ```asm
+            push rbx
+            ...
+            pop rbx
+            ```
+
+Minimal C++ ↔ Assembly integer interface
+
+    Assembly function:
+
+        ```asm
+        .globl _mul_add
+
+        _mul_add:
+            ; (a,b,c) = rdi, rsi, rdx
+            mov rax, rdi
+            imul rax, rsi
+            add rax, rdx
+            ret
+        ```
+
+    C++:
+
+        ```cpp
+        extern "C" long mul_add(long a, long b, long c);
+
+        long x = mul_add(2, 3, 4);
+        ```
+
+Key mental model
+
+    Think of function calls like this:
+
+        C++ caller:
+            puts values into registers
+            jumps (call)
+
+        Assembly callee:
+            reads registers
+            computes
+            puts result in rax
+            returns
+
+One-line summary
+
+    * **Calling convention** = rules for function calls (args, return, registers)
+    * **ABI** = full binary contract (includes calling convention + more)
+    * On macOS x86-64: uses **System V AMD64 ABI**
+    * Integers:
+      * args → rdi, rsi, rdx, rcx, r8, r9
+      * return → rax
+
+
+-------------------------------------------------------------------------------
 History of x86 / AMD64 Processors
 -----------------------------------
 

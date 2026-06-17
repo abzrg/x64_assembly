@@ -1,17 +1,20 @@
 #include <stdio.h>
 
-
-// Corresponds to _add in the assembly code.
-extern long add(long a, long b);
-
+extern long min(long a, long b);
 
 int main(void)
 {
-    long x = 10;
+    long x = 40;
     long y = 32;
+    long m = min(x, y);
 
-    long z = add(x, y);
+    printf("min(%ld, %ld) = %ld\n", x, y, m);
 
-    printf("%ld + %ld = %ld\n", x, y, z);
+    x = 10;
+    y = 12;
+    m = min(x, y);
+
+    printf("min(%ld, %ld) = %ld\n", x, y, m);
+
     return 0;
 }
