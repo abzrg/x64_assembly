@@ -1,16 +1,23 @@
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "helper.h"
 
 int main(void)
 {
-    short a = 40;
-    short b = 32;
-    short c = 12;
-    short d = -12;
-    long m = min4(a, b, c, d);
+    srand(0);
 
-    printf("min(%i, %i, %i, %i) = %ld\n", a, b, c, d, m);
+    int count = 24;
+    char* arr = calloc(count, sizeof(*arr));
+
+    for (uint32_t i = 0; i < count; ++i) { arr[i] = (char)rand(); }
+    for (uint32_t i = 0; i < count; ++i) { printf("arr[%u] = %d\n", i, arr[i]); }
+
+    zero_array(arr, count);
+    for (uint32_t i = 0; i < count; ++i) { printf("arr[%u] = %d\n", i, arr[i]); }
+
+    free(arr);
 
     return 0;
 }
