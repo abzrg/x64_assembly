@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -Wall -Wextra -g -O0 -target x86_64-apple-macos -masm=intel
+CFLAGS = -Wall -Wextra -g -O0 -target x86_64-apple-macos
 
 # NOTE: `-target x86_64-apple-macos` tells Clang: pretend the machine we're
 # building for is an Intel Mac. Clang then:
@@ -59,15 +59,18 @@ CFLAGS = -Wall -Wextra -g -O0 -target x86_64-apple-macos -masm=intel
 #               v
 #     ARM64 instructions on your M1 CPU
 
+SRC_ASM = $(wildcard *.s)
+OBJ_ASM = $(patsubst %.o,%.s,$(SRC_ASM))
+
 all: a.out
 
-a.out: main.o helper.o
+a.out: main.o $(OBJ_ASM)
 	$(CC) $(CFLAGS) -o $@ $^
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c $<
 
-helper.o: helper.s
+%.o: %.s
 	$(CC) $(CFLAGS) -c $<
 
 clean:
